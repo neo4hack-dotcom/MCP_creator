@@ -1,0 +1,12 @@
+{
+  "name": "mcp_creator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Starter CLI to scaffold a minimal MCP project.",
+  "scripts": {
+    "start": "node src/index.js",
+    "create": "node src/index.js"
+  }
+}
+
