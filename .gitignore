@@ -1,3 +1,7 @@
 generated/
 node_modules/
-
+dist/
+.venv/
+__pycache__/
+backend/data/settings.json
+backend/data/templates.json
