@@ -3,10 +3,30 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Starter CLI to scaffold a minimal MCP project.",
+  "description": "Guided full-stack app to design and generate FastMCP servers with a local LLM.",
   "scripts": {
-    "start": "node src/index.js",
-    "create": "node src/index.js"
+    "setup": "npm run setup:python",
+    "setup:python": "node scripts/setup-python.mjs",
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
+    "dev:web": "vite --host 127.0.0.1 --port 3000",
+    "dev:api": "node scripts/run-api.mjs",
+    "start:api": "cross-env API_RELOAD=false node scripts/run-api.mjs",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "lint": "tsc --noEmit",
+    "check:backend": "node scripts/check-backend.mjs"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^5.0.4",
+    "concurrently": "^9.1.2",
+    "cross-env": "^10.0.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0"
   }
 }
-
