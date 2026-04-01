@@ -14,6 +14,7 @@ L'objectif est simple: partir d'un besoin metier, guider la conception du MCP da
 - sauvegarde de templates reutilisables de MCP
 - generation de blueprints MCP avec fallback deterministe si le LLM echoue
 - generation de projets Python `FastMCP`
+- preset PandasAI pour les MCPs d'analyse tabulaire
 - support de scaffolds ClickHouse et Oracle Database
 
 ## Parcours utilisateur
@@ -22,16 +23,18 @@ L'objectif est simple: partir d'un besoin metier, guider la conception du MCP da
 2. tester la connexion et charger les modeles exposes
 3. cadrer le MCP: nom, objectif, contexte, garde-fous, dependances
 4. ajouter des integrations DB si besoin
-5. sauvegarder le cadrage comme template reutilisable
-6. decrire les tools, ressources et prompts
-7. generer un blueprint
-8. generer le projet Python final dans `generated/`
+5. ajouter PandasAI si le MCP doit analyser des datasets entrants
+6. sauvegarder le cadrage comme template reutilisable
+7. decrire les tools, ressources et prompts
+8. generer un blueprint
+9. generer le projet Python final dans `generated/`
 
 ## Stack
 
 - frontend: React 19, TypeScript, Vite
 - backend: FastAPI, Pydantic, httpx
 - runtime Python genere: `FastMCP`
+- couche analytique optionnelle: `PandasAI`
 - support DB genere:
   - ClickHouse via `clickhouse-connect`
   - Oracle Database via `oracledb`
@@ -201,6 +204,31 @@ Les templates sont stockes localement dans:
 - `backend/data/templates.json`
 
 Ce fichier est ignore par Git.
+
+## PandasAI
+
+L'application peut maintenant generer facilement un MCP PandasAI oriente analyse de donnees.
+
+Ce mode est utile quand le MCP doit:
+
+- recevoir des donnees tabulaires en entree
+- accepter des datasets provenant potentiellement d'autres MCPs
+- faire du profiling, du calcul et de l'analyse exploratoire
+- produire un resultat structure exploitable par d'autres outils ou interfaces
+
+Le scaffold genere inclut:
+
+- une configuration PandasAI basee sur LiteLLM
+- des variables d'environnement pour brancher un LLM local compatible OpenAI
+- un tool de profiling de dataset
+- un tool d'analyse sur un dataset unique
+- un tool d'analyse multi-datasets quand cette option est activee
+
+Variables d'environnement typiques:
+
+- `PANDASAI_MODEL`
+- `PANDASAI_API_KEY`
+- `PANDASAI_API_BASE`
 
 ## Generation de MCP
 

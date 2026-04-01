@@ -15,6 +15,7 @@ import type {
   DatabaseIntegration,
   GenerateResponse,
   LLMSettings,
+  PandasAIIntegration,
   PreviewResponse,
   ProjectSpec,
   PromptArgument,
@@ -105,6 +106,45 @@ function createDatabaseIntegration(kind: "clickhouse" | "oracle"): DatabaseInteg
   };
 }
 
+function createPandasAIIntegration(): PandasAIIntegration {
+  return {
+    enabled: true,
+    name: "PandasAI Analyst",
+    purpose:
+      "Accept tabular data passed in from this MCP or upstream MCPs, then run calculations, data mining, and analytical reasoning on top of it.",
+    allowMultipleDatasets: true,
+    notes: ""
+  };
+}
+
+function createPandasAIStarter(): ProjectSpec {
+  return {
+    ...initialSpec,
+    name: "PandasAI Analyst MCP",
+    description:
+      "An MCP focused on receiving structured datasets from users or upstream MCPs, profiling them, and producing analytical results with PandasAI.",
+    audience: "Data analysts, operations teams, business users",
+    primaryGoal:
+      "Turn incoming tabular datasets into high-signal analytical answers, summaries, and calculations.",
+    domainContext:
+      "The MCP should accept JSON records or multiple named datasets, profile the data, compute metrics, and help identify trends, anomalies, and explanations.",
+    llmRole:
+      "Act as a careful data analyst. Ground every answer in the provided datasets, highlight uncertainty, and avoid inventing columns or values.",
+    safetyGuardrails: [
+      "Validate the input payload before building DataFrames.",
+      "Be explicit when a question cannot be answered from the provided data.",
+      "Return structured results that can be consumed by other MCPs or UI layers."
+    ],
+    testScenarios: [
+      "Single dataset analysis with valid JSON records.",
+      "Multi-dataset analysis with named upstream MCP outputs.",
+      "Graceful failure when the incoming dataset payload is malformed."
+    ],
+    pandasAi: createPandasAIIntegration(),
+    tools: []
+  };
+}
+
 const initialSpec: ProjectSpec = {
   name: "",
   description: "",
@@ -122,6 +162,7 @@ const initialSpec: ProjectSpec = {
     "Nominal tool execution with valid parameters.",
     "Clean rejection when a required input is missing."
   ],
+  pandasAi: null,
   databaseIntegrations: [],
   tools: [createTool()],
   resources: [],
@@ -153,6 +194,12 @@ function normalizeSpecForEditor(input: ProjectSpec): ProjectSpec {
     safetyGuardrails: input.safetyGuardrails ?? [],
     externalDependencies: input.externalDependencies ?? [],
     testScenarios: input.testScenarios ?? [],
+    pandasAi: input.pandasAi
+      ? {
+          ...createPandasAIIntegration(),
+          ...input.pandasAi
+        }
+      : null,
     databaseIntegrations: (input.databaseIntegrations ?? []).map((integration) => ({
       ...createDatabaseIntegration(integration.kind),
       ...integration,
@@ -226,7 +273,8 @@ function App() {
     const namedTools = spec.tools.filter((tool) => tool.name.trim() && tool.purpose.trim());
     return {
       hasProjectCore: Boolean(spec.name.trim() && spec.description.trim()),
-      hasTooling: namedTools.length > 0 || spec.databaseIntegrations.length > 0,
+      hasTooling:
+        namedTools.length > 0 || spec.databaseIntegrations.length > 0 || Boolean(spec.pandasAi?.enabled),
       hasLLMConfig: Boolean(settings.baseUrl.trim()),
       hasSelectedModel: Boolean(settings.model.trim())
     };
@@ -312,6 +360,14 @@ function App() {
         databaseIntegrations: [...current.databaseIntegrations, createDatabaseIntegration(kind)]
       };
     });
+  }
+
+  function applyPandasAIStarter() {
+    const starter = normalizeSpecForEditor(createPandasAIStarter());
+    setSpec(starter);
+    setCurrentStep(1);
+    setMessage("PandasAI starter applied.");
+    setError("");
   }
 
   function applyTemplate(template: TemplateRecord) {
@@ -851,6 +907,42 @@ function App() {
                 )}
               </div>
 
+              <div className="subcard stack">
+                <div className="subcard-head">
+                  <div>
+                    <h3>Built-in starters</h3>
+                    <p className="muted">
+                      Use a focused starting point when you want to scaffold a complete analytical MCP faster.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="template-list">
+                  <article className="template-card">
+                    <div className="template-card-head">
+                      <div>
+                        <strong>PandasAI Analyst</strong>
+                        <p>
+                          Builds an MCP designed to accept tabular input data, profile it, and run
+                          calculations or analysis with PandasAI.
+                        </p>
+                      </div>
+                      <span>Starter</span>
+                    </div>
+                    <div className="template-meta">
+                      <span>tabular inputs</span>
+                      <span>multi-dataset</span>
+                      <span>PandasAI scaffold</span>
+                    </div>
+                    <div className="actions">
+                      <button className="secondary" type="button" onClick={applyPandasAIStarter}>
+                        Use starter
+                      </button>
+                    </div>
+                  </article>
+                </div>
+              </div>
+
               <div className="grid two">
                 <label>
                   <span>MCP name</span>
@@ -931,6 +1023,135 @@ function App() {
                   placeholder="Example: act like a reliable analytical copilot, cautious, action-oriented, and transparent about uncertainty."
                 />
               </label>
+
+              <div className="stack">
+                <div className="subcard-head">
+                  <h3>AI analysis integrations</h3>
+                  <div className="actions">
+                    <button
+                      className="secondary"
+                      type="button"
+                      onClick={() =>
+                        setSpec((current) => ({
+                          ...current,
+                          pandasAi: current.pandasAi?.enabled ? null : createPandasAIIntegration()
+                        }))
+                      }
+                    >
+                      {spec.pandasAi?.enabled ? "Remove PandasAI" : "Add PandasAI"}
+                    </button>
+                  </div>
+                </div>
+
+                {!spec.pandasAi?.enabled ? (
+                  <div className="empty-state">
+                    Add PandasAI when the MCP should receive tabular input data, potentially from
+                    upstream MCPs, and perform mining, calculations, or analytical reasoning on it.
+                  </div>
+                ) : (
+                  <article className="subcard stack">
+                    <div className="subcard-head">
+                      <h4>PandasAI analyst layer</h4>
+                      <button
+                        className="ghost"
+                        type="button"
+                        onClick={() =>
+                          setSpec((current) => ({
+                            ...current,
+                            pandasAi: null
+                          }))
+                        }
+                      >
+                        Delete
+                      </button>
+                    </div>
+
+                    <div className="grid two">
+                      <label>
+                        <span>Display name</span>
+                        <input
+                          value={spec.pandasAi.name}
+                          onChange={(event) =>
+                            setSpec((current) => ({
+                              ...current,
+                              pandasAi: current.pandasAi
+                                ? { ...current.pandasAi, name: event.target.value }
+                                : current.pandasAi
+                            }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        <span>Intended usage</span>
+                        <input
+                          value={spec.pandasAi.purpose}
+                          onChange={(event) =>
+                            setSpec((current) => ({
+                              ...current,
+                              pandasAi: current.pandasAi
+                                ? { ...current.pandasAi, purpose: event.target.value }
+                                : current.pandasAi
+                            }))
+                          }
+                        />
+                      </label>
+                    </div>
+
+                    <label>
+                      <span>Generation notes</span>
+                      <textarea
+                        value={spec.pandasAi.notes}
+                        onChange={(event) =>
+                          setSpec((current) => ({
+                            ...current,
+                            pandasAi: current.pandasAi
+                              ? { ...current.pandasAi, notes: event.target.value }
+                              : current.pandasAi
+                          }))
+                        }
+                        rows={3}
+                        placeholder="Expected dataset shapes, upstream MCP payload conventions, calculation expectations..."
+                      />
+                    </label>
+
+                    <div className="grid two compact">
+                      <label className="checkbox-field">
+                        <span>Enabled</span>
+                        <input
+                          type="checkbox"
+                          checked={spec.pandasAi.enabled}
+                          onChange={(event) =>
+                            setSpec((current) => ({
+                              ...current,
+                              pandasAi: current.pandasAi
+                                ? { ...current.pandasAi, enabled: event.target.checked }
+                                : current.pandasAi
+                            }))
+                          }
+                        />
+                      </label>
+                      <label className="checkbox-field">
+                        <span>Allow multiple datasets</span>
+                        <input
+                          type="checkbox"
+                          checked={spec.pandasAi.allowMultipleDatasets}
+                          onChange={(event) =>
+                            setSpec((current) => ({
+                              ...current,
+                              pandasAi: current.pandasAi
+                                ? {
+                                    ...current.pandasAi,
+                                    allowMultipleDatasets: event.target.checked
+                                  }
+                                : current.pandasAi
+                            }))
+                          }
+                        />
+                      </label>
+                    </div>
+                  </article>
+                )}
+              </div>
 
               <div className="stack">
                 <div className="subcard-head">
@@ -1543,6 +1764,7 @@ function App() {
                   <p>{spec.description || "Add a description to guide the generation."}</p>
                   <ul>
                     <li>{spec.tools.filter((tool) => tool.name.trim()).length} business tools</li>
+                    <li>{spec.pandasAi?.enabled ? "PandasAI enabled" : "PandasAI disabled"}</li>
                     <li>{spec.databaseIntegrations.length} DB integration(s)</li>
                     <li>{spec.resources.length} resources</li>
                     <li>{spec.prompts.length} prompts</li>
@@ -1557,6 +1779,17 @@ function App() {
                   </p>
                 </div>
               </div>
+
+              {spec.pandasAi?.enabled && (
+                <div className="subcard stack">
+                  <h4>PandasAI layer</h4>
+                  <div className="integration-row">
+                    <strong>{spec.pandasAi.name}</strong>
+                    <span>{spec.pandasAi.allowMultipleDatasets ? "multi-dataset" : "single dataset"}</span>
+                    <p>{spec.pandasAi.purpose}</p>
+                  </div>
+                </div>
+              )}
 
               {spec.databaseIntegrations.length > 0 && (
                 <div className="subcard stack">
@@ -1646,6 +1879,21 @@ function App() {
                           </ul>
                         </div>
                       ))}
+                    </div>
+                  ) : null}
+
+                  {preview?.blueprint.pandas_ai ? (
+                    <div className="subcard stack">
+                      <h4>Generated PandasAI integration</h4>
+                      <div className="tool-preview">
+                        <strong>{preview.blueprint.pandas_ai.name}</strong>
+                        <p>{preview.blueprint.pandas_ai.purpose}</p>
+                        <ul>
+                          {preview.blueprint.pandas_ai.setup_notes.map((note) => (
+                            <li key={note}>{note}</li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   ) : null}
 

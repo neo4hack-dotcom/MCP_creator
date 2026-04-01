@@ -9,11 +9,13 @@ from typing import Any
 from .llm_client import request_json_completion
 from .models import (
     BlueprintDatabaseIntegration,
+    BlueprintPandasAIIntegration,
     BlueprintPrompt,
     BlueprintResource,
     BlueprintTool,
     DatabaseIntegrationSpec,
     LLMSettings,
+    PandasAIIntegrationSpec,
     ProjectBlueprint,
     ProjectSpec,
 )
@@ -107,6 +109,37 @@ def _db_setup_notes(integration: DatabaseIntegrationSpec) -> list[str]:
     ]
 
 
+def build_pandas_ai_integration(spec: ProjectSpec) -> BlueprintPandasAIIntegration | None:
+    if not spec.pandas_ai or not spec.pandas_ai.enabled:
+        return None
+
+    purpose = spec.pandas_ai.purpose.strip() or (
+        "Accept tabular data from this MCP or from upstream MCPs, then run calculations, "
+        "data mining, and exploratory analysis with PandasAI."
+    )
+
+    return BlueprintPandasAIIntegration(
+        enabled=True,
+        name=spec.pandas_ai.name.strip() or "PandasAI Analyst",
+        purpose=purpose,
+        allow_multiple_datasets=spec.pandas_ai.allow_multiple_datasets,
+        notes=spec.pandas_ai.notes.strip(),
+        python_name="pandas_ai",
+        helper_name="configure_pandasai",
+        env_vars=[
+            "PANDASAI_MODEL",
+            "PANDASAI_API_KEY",
+            "PANDASAI_API_BASE",
+        ],
+        setup_notes=[
+            "Uses PandasAI with a LiteLLM backend so it can target an OpenAI-compatible local server.",
+            "Accepts JSON datasets as tool input, which makes it easy to chain results coming from other MCPs.",
+            "Supports single-dataset analysis and multi-dataset analysis in the generated scaffold.",
+            "Recommended model values often use a provider prefix such as openai/your-model-name.",
+        ],
+    )
+
+
 def build_database_integrations(spec: ProjectSpec) -> list[BlueprintDatabaseIntegration]:
     integrations: list[BlueprintDatabaseIntegration] = []
     for item in spec.database_integrations:
@@ -141,6 +174,7 @@ def build_database_integrations(spec: ProjectSpec) -> list[BlueprintDatabaseInte
 def fallback_blueprint(spec: ProjectSpec) -> ProjectBlueprint:
     server_name = spec.name.strip() or "Generated MCP"
     package_name = slugify(spec.name)
+    pandas_ai = build_pandas_ai_integration(spec)
     database_integrations = build_database_integrations(spec)
 
     tools: list[BlueprintTool] = []
@@ -215,6 +249,14 @@ def fallback_blueprint(spec: ProjectSpec) -> ProjectBlueprint:
         ]
 
     dependencies = ["fastmcp>=3.0.0", "pydantic>=2.7.0", *spec.external_dependencies]
+    if pandas_ai:
+        dependencies.extend(
+            [
+                "pandas>=2.2.0",
+                "pandasai",
+                "pandasai-litellm",
+            ]
+        )
     for integration in database_integrations:
         dependencies.append(_db_dependency(integration.kind))
 
@@ -223,6 +265,9 @@ def fallback_blueprint(spec: ProjectSpec) -> ProjectBlueprint:
             f"Primary goal: {spec.primary_goal.strip()}" if spec.primary_goal.strip() else "",
             f"Audience: {spec.audience.strip()}" if spec.audience.strip() else "",
             f"Domain context: {spec.domain_context.strip()}" if spec.domain_context.strip() else "",
+            (
+                f"PandasAI integration: {pandas_ai.name}" if pandas_ai else ""
+            ),
             (
                 "Database integrations: "
                 + ", ".join(item.name for item in database_integrations)
@@ -246,6 +291,15 @@ def fallback_blueprint(spec: ProjectSpec) -> ProjectBlueprint:
         ],
     )
 
+    if pandas_ai:
+        validation_checks.extend(
+            [
+                "Validate that JSON dataset inputs can be parsed into DataFrames.",
+                "Validate the single-dataset analysis tool with representative records.",
+                "Validate the multi-dataset analysis tool with upstream MCP output payloads.",
+            ]
+        )
+
     for integration in database_integrations:
         validation_checks.append(f"Validate the {integration.kind} connection helper with environment variables.")
         if integration.include_query_tool:
@@ -258,6 +312,10 @@ def fallback_blueprint(spec: ProjectSpec) -> ProjectBlueprint:
         "Resources and prompts are documented alongside the tool catalog.",
         "Project scaffold is ready for domain-specific implementation wiring.",
     ]
+    if pandas_ai:
+        readme_highlights.append(
+            "A PandasAI analysis layer is included for tabular inputs and cross-MCP analytical workflows."
+        )
     if database_integrations:
         readme_highlights.append(
             "Database helper scaffolds and environment-variable setup are included for the selected systems."
@@ -273,6 +331,7 @@ def fallback_blueprint(spec: ProjectSpec) -> ProjectBlueprint:
         validation_checks=validation_checks,
         readme_highlights=readme_highlights,
         generation_mode="fallback",
+        pandas_ai=pandas_ai,
         database_integrations=database_integrations,
         tools=tools,
         resources=resources,
@@ -290,6 +349,17 @@ def _response_schema_hint() -> dict[str, Any]:
         "dependencies": ["fastmcp>=3.0.0"],
         "validation_checks": ["short bullet"],
         "readme_highlights": ["short bullet"],
+        "pandas_ai": {
+            "enabled": True,
+            "name": "PandasAI Analyst",
+            "purpose": "Analyze tabular inputs passed from other MCPs",
+            "allow_multiple_datasets": True,
+            "notes": "Expect JSON records or mappings of datasets",
+            "python_name": "pandas_ai",
+            "env_vars": ["PANDASAI_MODEL", "PANDASAI_API_BASE"],
+            "helper_name": "configure_pandasai",
+            "setup_notes": ["Uses PandasAI with LiteLLM"],
+        },
         "database_integrations": [
             {
                 "kind": "clickhouse",
@@ -364,7 +434,7 @@ def llm_blueprint(spec: ProjectSpec, settings: LLMSettings) -> ProjectBlueprint:
         "Important rules:\n"
         "- Return JSON only, without markdown.\n"
         "- Keep tool names readable and python_name values valid Python identifiers.\n"
-        "- Preserve database_integrations and tailor notes/dependencies when ClickHouse or Oracle are selected.\n"
+        "- Preserve pandas_ai and database_integrations and tailor notes/dependencies when they are selected.\n"
         "- Make workflow_steps explicit and practical.\n"
         "- Prefer safe, deterministic implementation notes.\n"
         "- Do not omit arrays; use empty arrays if needed.\n\n"
@@ -396,6 +466,26 @@ def normalize_blueprint(payload: dict[str, Any], spec: ProjectSpec) -> ProjectBl
             "generation_mode": payload.get("generation_mode") or "llm",
         }
     )
+
+    raw_pandas_ai = payload.get("pandas_ai")
+    if raw_pandas_ai:
+        pandas_ai_data = BlueprintPandasAIIntegration.model_validate(raw_pandas_ai).model_dump()
+        pandas_ai_data["python_name"] = python_name(
+            pandas_ai_data.get("python_name") or pandas_ai_data["name"] or "pandas_ai"
+        )
+        pandas_ai_data["helper_name"] = pandas_ai_data.get("helper_name") or "configure_pandasai"
+        pandas_ai_data["env_vars"] = pandas_ai_data.get("env_vars") or [
+            "PANDASAI_MODEL",
+            "PANDASAI_API_KEY",
+            "PANDASAI_API_BASE",
+        ]
+        pandas_ai_data["setup_notes"] = pandas_ai_data.get("setup_notes") or [
+            "Uses PandasAI with a LiteLLM backend.",
+            "Accepts JSON datasets from upstream MCPs.",
+        ]
+        merged["pandas_ai"] = pandas_ai_data
+    else:
+        merged["pandas_ai"] = fallback.pandas_ai.model_dump() if fallback.pandas_ai else None
 
     merged["database_integrations"] = []
     raw_integrations = payload.get("database_integrations") or fallback.database_integrations
@@ -460,6 +550,177 @@ def create_blueprint(spec: ProjectSpec, settings: LLMSettings) -> tuple[ProjectB
 
     blueprint = fallback_blueprint(spec)
     return blueprint, False, warnings
+
+
+def _pandasai_block(integration: BlueprintPandasAIIntegration) -> str:
+    setup_resource = {
+        "name": integration.name,
+        "purpose": integration.purpose,
+        "env_vars": integration.env_vars,
+        "notes": integration.setup_notes + ([integration.notes] if integration.notes else []),
+    }
+
+    multi_dataset_tool = ""
+    if integration.allow_multiple_datasets:
+        multi_dataset_tool = '''
+@mcp.tool
+def pandasai_analyze_datasets(question: str, datasets_json: str) -> dict[str, Any]:
+    """Analyze multiple datasets that may come from upstream MCP outputs."""
+    configure_pandasai()
+    frames, dataset_names = _load_named_datasets(datasets_json)
+    result = pai.chat(question, *frames)
+    return {
+        "tool": "pandasai_analyze_datasets",
+        "datasets": dataset_names,
+        "question": question,
+        "result": _serialize_pandasai_result(result),
+    }
+'''
+
+    return f'''
+try:
+    import pandas as pd
+    import pandasai as pai
+    from pandasai_litellm.litellm import LiteLLM
+except ImportError:
+    pd = None
+    pai = None
+    LiteLLM = None
+
+
+def configure_pandasai() -> None:
+    if pd is None or pai is None or LiteLLM is None:
+        raise RuntimeError("Install pandas, pandasai, and pandasai-litellm to enable PandasAI support.")
+
+    model = os.getenv("PANDASAI_MODEL")
+    if not model:
+        raise RuntimeError("PANDASAI_MODEL is required.")
+
+    llm_kwargs: dict[str, Any] = {{"model": model}}
+    api_key = os.getenv("PANDASAI_API_KEY")
+    api_base = os.getenv("PANDASAI_API_BASE")
+
+    if api_key:
+        llm_kwargs["api_key"] = api_key
+    if api_base:
+        llm_kwargs["api_base"] = api_base
+
+    pai.config.set({{"llm": LiteLLM(**llm_kwargs)}})
+
+
+def _normalize_records_payload(payload: Any) -> list[dict[str, Any]]:
+    if isinstance(payload, list):
+        return [item if isinstance(item, dict) else {{"value": item}} for item in payload]
+    if isinstance(payload, dict):
+        if isinstance(payload.get("records"), list):
+            return _normalize_records_payload(payload["records"])
+        return [payload]
+    raise ValueError("Expected a JSON list of records or an object containing records.")
+
+
+def _load_dataframe(records_json: str):
+    payload = json.loads(records_json)
+    records = _normalize_records_payload(payload)
+    dataframe = pd.DataFrame(records)
+    return pai.DataFrame(dataframe), records
+
+
+def _load_named_datasets(datasets_json: str) -> tuple[list[Any], list[str]]:
+    payload = json.loads(datasets_json)
+    frames: list[Any] = []
+    names: list[str] = []
+
+    if isinstance(payload, dict):
+        for dataset_name, records in payload.items():
+            normalized = _normalize_records_payload(records)
+            frames.append(pai.DataFrame(pd.DataFrame(normalized)))
+            names.append(str(dataset_name))
+        return frames, names
+
+    if isinstance(payload, list):
+        for index, item in enumerate(payload, start=1):
+            if not isinstance(item, dict):
+                raise ValueError("Expected each dataset item to be an object.")
+            dataset_name = str(item.get("name") or f"dataset_{{index}}")
+            records = _normalize_records_payload(item.get("records", []))
+            frames.append(pai.DataFrame(pd.DataFrame(records)))
+            names.append(dataset_name)
+        return frames, names
+
+    raise ValueError("Expected datasets_json to be an object map or a list of named datasets.")
+
+
+def _serialize_pandasai_result(result: Any) -> dict[str, Any]:
+    if pd is not None and isinstance(result, pd.DataFrame):
+        return {{
+            "type": "dataframe",
+            "rows": result.to_dict(orient="records"),
+            "columns": list(result.columns),
+            "row_count": len(result.index),
+        }}
+
+    if isinstance(result, (str, int, float, bool)) or result is None:
+        return {{
+            "type": type(result).__name__ if result is not None else "null",
+            "value": result,
+        }}
+
+    if isinstance(result, list):
+        return {{
+            "type": "list",
+            "value": result,
+        }}
+
+    if isinstance(result, dict):
+        return {{
+            "type": "dict",
+            "value": result,
+        }}
+
+    return {{
+        "type": type(result).__name__,
+        "value": str(result),
+    }}
+
+
+@mcp.resource("project://pandasai/setup")
+def pandasai_setup() -> dict[str, Any]:
+    """Expose the generated PandasAI integration guide."""
+    return {_python_literal(setup_resource)}
+
+
+@mcp.tool
+def pandasai_profile_records(records_json: str, dataset_name: str = "dataset") -> dict[str, Any]:
+    """Profile incoming tabular data before running deeper analysis."""
+    configure_pandasai()
+    dataframe, records = _load_dataframe(records_json)
+    pandas_df = pd.DataFrame(records)
+    return {{
+        "tool": "pandasai_profile_records",
+        "dataset_name": dataset_name,
+        "row_count": len(pandas_df.index),
+        "columns": list(pandas_df.columns),
+        "dtypes": {{column: str(dtype) for column, dtype in pandas_df.dtypes.items()}},
+        "preview": pandas_df.head(10).to_dict(orient="records"),
+        "analysis_ready": True,
+    }}
+
+
+@mcp.tool
+def pandasai_analyze_records(question: str, records_json: str, dataset_name: str = "dataset") -> dict[str, Any]:
+    """Analyze a single tabular dataset passed in as JSON records."""
+    configure_pandasai()
+    dataframe, _ = _load_dataframe(records_json)
+    result = dataframe.chat(question)
+    return {{
+        "tool": "pandasai_analyze_records",
+        "dataset_name": dataset_name,
+        "question": question,
+        "result": _serialize_pandasai_result(result),
+    }}
+
+{multi_dataset_tool}
+'''
 
 
 def _render_tool_signature(tool: BlueprintTool) -> str:
@@ -774,6 +1035,8 @@ def project_overview() -> dict[str, Any]:
 '''
         )
 
+    pandas_ai_block = _pandasai_block(blueprint.pandas_ai) if blueprint.pandas_ai else ""
+
     database_blocks = []
     for integration in blueprint.database_integrations:
         if integration.kind == "clickhouse":
@@ -783,6 +1046,7 @@ def project_overview() -> dict[str, Any]:
 
     return f'''from __future__ import annotations
 
+import json
 import os
 from typing import Any
 
@@ -802,6 +1066,8 @@ def project_blueprint() -> dict[str, Any]:
     """Expose the generated blueprint as a resource."""
     return PROJECT_BLUEPRINT
 
+
+{pandas_ai_block}
 
 {chr(10).join(database_blocks)}
 
@@ -832,6 +1098,16 @@ def build_readme(blueprint: ProjectBlueprint) -> str:
         f"- `{item.kind}`: env vars {', '.join(item.env_vars)}"
         for item in blueprint.database_integrations
     ) or "- No database helpers selected."
+    pandas_ai_lines = (
+        "\n".join(f"- `{item}`" for item in blueprint.pandas_ai.env_vars)
+        if blueprint.pandas_ai
+        else "- PandasAI is not enabled for this project."
+    )
+    python_version_note = (
+        "This project includes PandasAI. Verify the supported Python version for your selected PandasAI release before deployment."
+        if blueprint.pandas_ai
+        else "This project targets Python 3.10+."
+    )
 
     return f"""# {blueprint.server_name}
 
@@ -848,6 +1124,14 @@ This project was generated by `MCP_creator` to provide a `FastMCP` server scaffo
 ## Database Integrations
 
 {database_lines}
+
+## PandasAI
+
+{pandas_ai_lines}
+
+### PandasAI note
+
+{python_version_note}
 
 ### Oracle note
 
@@ -902,6 +1186,16 @@ def build_requirements(blueprint: ProjectBlueprint) -> str:
 def build_env_example(blueprint: ProjectBlueprint) -> str:
     lines = ["LOG_LEVEL=INFO"]
 
+    if blueprint.pandas_ai:
+        lines.extend(
+            [
+                "",
+                "PANDASAI_MODEL=openai/your-local-model",
+                "PANDASAI_API_KEY=local-key",
+                "PANDASAI_API_BASE=http://127.0.0.1:1234/v1",
+            ]
+        )
+
     has_clickhouse = any(item.kind == "clickhouse" for item in blueprint.database_integrations)
     if has_clickhouse:
         lines.extend(
@@ -935,11 +1229,12 @@ def build_env_example(blueprint: ProjectBlueprint) -> str:
 
 def build_pyproject(blueprint: ProjectBlueprint) -> str:
     description = blueprint.summary.replace('"', "'").replace("\n", " ").strip()
+    requires_python = ">=3.10"
     return f"""[project]
 name = "{blueprint.package_name}"
 version = "0.1.0"
 description = "{description}"
-requires-python = ">=3.10"
+requires-python = "{requires_python}"
 dependencies = []
 
 [tool.ruff]

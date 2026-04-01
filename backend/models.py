@@ -71,6 +71,14 @@ class DatabaseIntegrationSpec(BaseModel):
     notes: str = ""
 
 
+class PandasAIIntegrationSpec(BaseModel):
+    enabled: bool = False
+    name: str = "PandasAI Analyst"
+    purpose: str = ""
+    allow_multiple_datasets: bool = True
+    notes: str = ""
+
+
 class ProjectSpec(BaseModel):
     name: str
     description: str
@@ -82,6 +90,7 @@ class ProjectSpec(BaseModel):
     safety_guardrails: list[str] = Field(default_factory=list)
     external_dependencies: list[str] = Field(default_factory=list)
     test_scenarios: list[str] = Field(default_factory=list)
+    pandas_ai: PandasAIIntegrationSpec | None = None
     database_integrations: list[DatabaseIntegrationSpec] = Field(default_factory=list)
     tools: list[ToolSpec] = Field(default_factory=list)
     resources: list[ResourceSpec] = Field(default_factory=list)
@@ -109,6 +118,13 @@ class BlueprintDatabaseIntegration(DatabaseIntegrationSpec):
     setup_notes: list[str] = Field(default_factory=list)
 
 
+class BlueprintPandasAIIntegration(PandasAIIntegrationSpec):
+    python_name: str = ""
+    env_vars: list[str] = Field(default_factory=list)
+    helper_name: str = ""
+    setup_notes: list[str] = Field(default_factory=list)
+
+
 class ProjectBlueprint(BaseModel):
     server_name: str
     package_name: str
@@ -119,6 +135,7 @@ class ProjectBlueprint(BaseModel):
     validation_checks: list[str] = Field(default_factory=list)
     readme_highlights: list[str] = Field(default_factory=list)
     generation_mode: str = "fallback"
+    pandas_ai: BlueprintPandasAIIntegration | None = None
     database_integrations: list[BlueprintDatabaseIntegration] = Field(default_factory=list)
     tools: list[BlueprintTool] = Field(default_factory=list)
     resources: list[BlueprintResource] = Field(default_factory=list)

@@ -51,6 +51,14 @@ export type DatabaseIntegration = {
   notes: string;
 };
 
+export type PandasAIIntegration = {
+  enabled: boolean;
+  name: string;
+  purpose: string;
+  allowMultipleDatasets: boolean;
+  notes: string;
+};
+
 export type ProjectSpec = {
   name: string;
   description: string;
@@ -62,6 +70,7 @@ export type ProjectSpec = {
   safetyGuardrails: string[];
   externalDependencies: string[];
   testScenarios: string[];
+  pandasAi: PandasAIIntegration | null;
   databaseIntegrations: DatabaseIntegration[];
   tools: ToolSpec[];
   resources: ResourceSpec[];
@@ -138,6 +147,18 @@ export type BlueprintDatabaseIntegration = {
   setup_notes: string[];
 };
 
+export type BlueprintPandasAIIntegration = {
+  enabled: boolean;
+  name: string;
+  purpose: string;
+  allow_multiple_datasets: boolean;
+  notes: string;
+  python_name: string;
+  env_vars: string[];
+  helper_name: string;
+  setup_notes: string[];
+};
+
 export type ProjectBlueprint = {
   server_name: string;
   package_name: string;
@@ -148,6 +169,7 @@ export type ProjectBlueprint = {
   validation_checks: string[];
   readme_highlights: string[];
   generation_mode: string;
+  pandas_ai: BlueprintPandasAIIntegration | null;
   database_integrations: BlueprintDatabaseIntegration[];
   tools: BlueprintTool[];
   resources: BlueprintResource[];
