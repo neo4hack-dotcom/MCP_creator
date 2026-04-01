@@ -11,7 +11,7 @@ const args = [
   ...runtime.args,
   "-m",
   "uvicorn",
-  "backend.app:app",
+  "server:app",
   "--host",
   host,
   "--port",
@@ -37,4 +37,3 @@ child.on("error", (error) => {
   console.error("Tip: run `npm run setup:python` first to create the virtualenv and install backend dependencies.");
   process.exit(1);
 });
-

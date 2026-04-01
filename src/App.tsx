@@ -26,11 +26,11 @@ import type {
 } from "./types";
 
 const steps = [
-  "Configuration LLM",
-  "Cadrage & integrations",
+  "LLM Setup",
+  "Scope & Integrations",
   "Tools",
-  "Ressources & prompts",
-  "Preview & generation"
+  "Resources & Prompts",
+  "Preview & Generate"
 ];
 
 function uid(prefix: string) {
@@ -96,8 +96,8 @@ function createDatabaseIntegration(kind: "clickhouse" | "oracle"): DatabaseInteg
     name: kind === "clickhouse" ? "ClickHouse" : "Oracle Database",
     purpose:
       kind === "clickhouse"
-        ? "Exposer des requetes analytiques en lecture seule."
-        : "Exposer des lectures Oracle en lecture seule.",
+        ? "Expose read-only analytics queries."
+        : "Expose read-only Oracle reads.",
     readOnly: true,
     includeSchemaTool: true,
     includeQueryTool: true,
@@ -114,13 +114,13 @@ const initialSpec: ProjectSpec = {
   domainContext: "",
   llmRole: "",
   safetyGuardrails: [
-    "Valider et normaliser les entrees avant toute action externe.",
-    "Retourner des reponses structurees et explicites en cas d'erreur."
+    "Validate and normalize inputs before any external action.",
+    "Return explicit structured responses when errors happen."
   ],
   externalDependencies: [],
   testScenarios: [
-    "Appel nominal d'un tool avec des parametres valides.",
-    "Refus propre quand une entree obligatoire est absente."
+    "Nominal tool execution with valid parameters.",
+    "Clean rejection when a required input is missing."
   ],
   databaseIntegrations: [],
   tools: [createTool()],
@@ -320,7 +320,7 @@ function App() {
     setTemplateName(template.name);
     setTemplateDescription(template.description);
     setCurrentStep(1);
-    setMessage(`Template "${template.name}" applique.`);
+    setMessage(`Template "${template.name}" applied.`);
     setError("");
   }
 
@@ -332,7 +332,7 @@ function App() {
 
   async function handleCreateTemplate() {
     if (!templateName.trim()) {
-      setError("Renseigne un nom de template.");
+      setError("Enter a template name.");
       setMessage("");
       return;
     }
@@ -349,12 +349,12 @@ function App() {
       });
       setTemplates((current) => [created, ...current.filter((item) => item.id !== created.id)]);
       setSelectedTemplateId(created.id);
-      setMessage(`Template "${created.name}" enregistre.`);
+      setMessage(`Template "${created.name}" saved.`);
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "Impossible d'enregistrer le template."
+          : "Unable to save the template."
       );
     } finally {
       setIsSavingTemplate(false);
@@ -363,13 +363,13 @@ function App() {
 
   async function handleUpdateTemplate() {
     if (!selectedTemplateId) {
-      setError("Selectionne d'abord un template a mettre a jour.");
+      setError("Select a template to update first.");
       setMessage("");
       return;
     }
 
     if (!templateName.trim()) {
-      setError("Renseigne un nom de template.");
+      setError("Enter a template name.");
       setMessage("");
       return;
     }
@@ -389,12 +389,12 @@ function App() {
           b.updatedAt.localeCompare(a.updatedAt)
         )
       );
-      setMessage(`Template "${updated.name}" mis a jour.`);
+      setMessage(`Template "${updated.name}" updated.`);
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "Impossible de mettre a jour le template."
+          : "Unable to update the template."
       );
     } finally {
       setIsSavingTemplate(false);
@@ -412,12 +412,12 @@ function App() {
       if (selectedTemplateId === templateId) {
         resetTemplateEditor();
       }
-      setMessage("Template supprime.");
+      setMessage("Template deleted.");
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "Impossible de supprimer le template."
+          : "Unable to delete the template."
       );
     } finally {
       setIsDeletingTemplate(false);
@@ -433,12 +433,12 @@ function App() {
     try {
       const payload = await saveSettings(settings);
       setSettings(payload);
-      setMessage("Configuration LLM enregistree.");
+      setMessage("LLM settings saved.");
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "Impossible d'enregistrer les settings."
+          : "Unable to save the settings."
       );
     } finally {
       setIsSavingSettings(false);
@@ -464,7 +464,7 @@ function App() {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "Impossible de tester la connexion LLM."
+          : "Unable to test the LLM connection."
       );
     } finally {
       setIsTestingLLM(false);
@@ -482,8 +482,8 @@ function App() {
       setAvailableModels(payload.models);
       setLLMStatus(
         payload.models.length
-          ? `${payload.models.length} modele(s) detecte(s).`
-          : "Connexion reussie mais aucun modele n'a ete retourne."
+          ? `${payload.models.length} model(s) detected.`
+          : "Connection succeeded but no models were returned."
       );
       if (payload.models.length && !settings.model.trim()) {
         setSettings((current) => ({ ...current, model: payload.models[0] }));
@@ -492,7 +492,7 @@ function App() {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "Impossible de recuperer les modeles."
+          : "Unable to load models."
       );
     } finally {
       setIsLoadingModels(false);
@@ -511,14 +511,14 @@ function App() {
       setCurrentStep(4);
       setMessage(
         payload.llm_used
-          ? "Blueprint genere avec le LLM local."
-          : "Blueprint genere via le fallback interne."
+          ? "Blueprint generated with the local LLM."
+          : "Blueprint generated with the internal fallback."
       );
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "Impossible de generer le blueprint."
+          : "Unable to generate the blueprint."
       );
     } finally {
       setIsPreviewing(false);
@@ -535,12 +535,12 @@ function App() {
       setGeneration(payload);
       setPreview(payload);
       setCurrentStep(4);
-      setMessage(`Projet genere dans ${payload.output_path}`);
+      setMessage(`Project generated in ${payload.output_path}`);
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "Impossible de generer le projet."
+          : "Unable to generate the project."
       );
     } finally {
       setIsGenerating(false);
@@ -552,28 +552,33 @@ function App() {
       <div className="ambient ambient-left" />
       <div className="ambient ambient-right" />
       <header className="hero">
-        <div>
+        <div className="hero-copyblock">
           <p className="eyebrow">MCP Creator</p>
-          <h1>Concois des serveurs FastMCP precis, guides et prets a etre affines.</h1>
+          <h1>Design precise FastMCP servers with a cleaner guided flow.</h1>
           <p className="hero-copy">
-            L&apos;app structure ton besoin, enrichit le blueprint avec ton LLM local puis
-            genere un projet Python `FastMCP` dans `generated/`.
+            Define the scope, enrich the blueprint with your local LLM, and generate a reusable
+            Python MCP project in `generated/`.
           </p>
         </div>
-        <div className="hero-panel">
-          <p>Checklist rapide</p>
-          <ul>
-            <li>setup Python automatise via `npm run setup:python`</li>
-            <li>support Windows avec detection de `py -3` et `.venv\\Scripts\\python.exe`</li>
-            <li>test de connexion LLM + chargement de la liste des modeles</li>
-            <li>templates ClickHouse et Oracle pour les MCPs generes</li>
-          </ul>
+        <div className="hero-panel minimal-panel">
+          <div className="hero-metric">
+            <strong>5</strong>
+            <span>guided steps</span>
+          </div>
+          <div className="hero-metric">
+            <strong>2</strong>
+            <span>database presets</span>
+          </div>
+          <div className="hero-metric">
+            <strong>1</strong>
+            <span>reusable template flow</span>
+          </div>
         </div>
       </header>
 
       <main className="workspace">
         <aside className="steps-panel card">
-          <p className="panel-label">Parcours guide</p>
+          <p className="panel-label">Workflow</p>
           <div className="step-list">
             {steps.map((step, index) => (
               <button
@@ -589,23 +594,23 @@ function App() {
           </div>
 
           <div className="status-block">
-            <p className="panel-label">Etat du cadrage</p>
+            <p className="panel-label">Readiness</p>
             <div className={`status-pill ${readiness.hasLLMConfig ? "ready" : ""}`}>
-              Endpoint LLM {readiness.hasLLMConfig ? "configure" : "a configurer"}
+              LLM endpoint {readiness.hasLLMConfig ? "configured" : "missing"}
             </div>
             <div className={`status-pill ${readiness.hasSelectedModel ? "ready" : ""}`}>
-              Modele {readiness.hasSelectedModel ? "selectionne" : "a choisir"}
+              Model {readiness.hasSelectedModel ? "selected" : "missing"}
             </div>
             <div className={`status-pill ${readiness.hasProjectCore ? "ready" : ""}`}>
-              Projet {readiness.hasProjectCore ? "cadre" : "a completer"}
+              Project {readiness.hasProjectCore ? "scoped" : "incomplete"}
             </div>
             <div className={`status-pill ${readiness.hasTooling ? "ready" : ""}`}>
-              Capacites {readiness.hasTooling ? "decrites" : "a definir"}
+              Capabilities {readiness.hasTooling ? "described" : "missing"}
             </div>
           </div>
 
           <div className="hint-box compact-box">
-            <strong>Install Windows</strong>
+            <strong>Windows quick start</strong>
             <code>npm install</code>
             <code>npm run setup:python</code>
             <code>npm run dev</code>
@@ -617,12 +622,12 @@ function App() {
             <form className="card stack" onSubmit={handleSaveSettings}>
               <div className="section-head">
                 <div>
-                  <p className="panel-label">Etape 1</p>
-                  <h2>Connexion au LLM local</h2>
+                  <p className="panel-label">Step 1</p>
+                  <h2>Local LLM connection</h2>
                 </div>
                 <p className="muted">
-                  Saisis un endpoint compatible OpenAI, puis teste la connexion et charge les
-                  modeles exposes par ton serveur local.
+                  Enter an OpenAI-compatible endpoint, then test the connection and load the
+                  models exposed by your local server.
                 </p>
               </div>
 
@@ -644,11 +649,11 @@ function App() {
                     onChange={(event) =>
                       setSettings((current) => ({ ...current, apiKey: event.target.value }))
                     }
-                    placeholder="laisser vide si ton serveur n'en demande pas"
+                    placeholder="leave blank if your server does not require one"
                   />
                 </label>
                 <label>
-                  <span>Modele selectionne</span>
+                  <span>Selected model</span>
                   <input
                     value={settings.model}
                     onChange={(event) =>
@@ -677,7 +682,7 @@ function App() {
 
               <div className="actions">
                 <button className="secondary" type="button" onClick={handleTestLLM} disabled={isTestingLLM}>
-                  {isTestingLLM ? "Test en cours..." : "Tester la connexion"}
+                  {isTestingLLM ? "Testing..." : "Test connection"}
                 </button>
                 <button
                   className="secondary"
@@ -685,20 +690,20 @@ function App() {
                   onClick={handleLoadModels}
                   disabled={isLoadingModels}
                 >
-                  {isLoadingModels ? "Chargement..." : "Charger les modeles"}
+                  {isLoadingModels ? "Loading..." : "Load models"}
                 </button>
                 <button className="primary" type="submit" disabled={isSavingSettings}>
-                  {isSavingSettings ? "Enregistrement..." : "Enregistrer la configuration"}
+                  {isSavingSettings ? "Saving..." : "Save settings"}
                 </button>
                 <button className="secondary" type="button" onClick={() => setCurrentStep(1)}>
-                  Continuer
+                  Continue
                 </button>
               </div>
 
               {(llmStatus || availableModels.length > 0) && (
                 <div className="subcard stack">
                   <div className="subcard-head">
-                    <h3>Etat de la connexion</h3>
+                    <h3>Connection status</h3>
                     {llmStatus ? <span className="status-pill ready">{llmStatus}</span> : null}
                   </div>
 
@@ -721,17 +726,16 @@ function App() {
                       ))}
                     </div>
                   ) : (
-                    <p className="muted">Aucun modele liste pour le moment.</p>
+                    <p className="muted">No models listed yet.</p>
                   )}
                 </div>
               )}
 
               <div className="hint-box">
-                <strong>Conseil</strong>
+                <strong>Note</strong>
                 <p>
-                  Sur certains serveurs locaux, `/models` n&apos;est pas implemente. Le test tente
-                  d&apos;abord la liste des modeles, puis peut basculer vers un test de chat minimal si
-                  un modele est deja renseigne.
+                  Some local servers do not implement `/models`. The test first tries model
+                  discovery, then can fall back to a minimal chat request if a model is already set.
                 </p>
               </div>
             </form>
@@ -741,31 +745,31 @@ function App() {
             <section className="card stack">
               <div className="section-head">
                 <div>
-                  <p className="panel-label">Etape 2</p>
-                  <h2>Cadrage du MCP et integrations</h2>
+                  <p className="panel-label">Step 2</p>
+                  <h2>MCP scope and integrations</h2>
                 </div>
                 <p className="muted">
-                  Cette etape guide le LLM sur le perimetre fonctionnel du MCP et les moteurs de
-                  donnees a preparer dans le scaffold.
+                  This step gives the LLM the functional scope of the MCP and the data engines that
+                  should be prepared in the scaffold.
                 </p>
               </div>
 
               <div className="subcard stack">
                 <div className="subcard-head">
                   <div>
-                    <h3>Templates reutilisables</h3>
+                    <h3>Reusable templates</h3>
                     <p className="muted">
-                      Sauvegarde un cadrage complet pour le recharger plus tard sur de nouveaux MCPs.
+                      Save a full project setup and reuse it later for new MCPs.
                     </p>
                   </div>
                   <button className="ghost" type="button" onClick={resetTemplateEditor}>
-                    Nouveau template
+                    New template
                   </button>
                 </div>
 
                 <div className="grid two">
                   <label>
-                    <span>Nom du template</span>
+                    <span>Template name</span>
                     <input
                       value={templateName}
                       onChange={(event) => setTemplateName(event.target.value)}
@@ -777,7 +781,7 @@ function App() {
                     <input
                       value={templateDescription}
                       onChange={(event) => setTemplateDescription(event.target.value)}
-                      placeholder="Template de depart pour les MCPs orientes Oracle"
+                      placeholder="Starting template for Oracle-oriented MCPs"
                     />
                   </label>
                 </div>
@@ -789,7 +793,7 @@ function App() {
                     onClick={handleCreateTemplate}
                     disabled={isSavingTemplate}
                   >
-                    {isSavingTemplate ? "Enregistrement..." : "Enregistrer comme template"}
+                    {isSavingTemplate ? "Saving..." : "Save as template"}
                   </button>
                   <button
                     className="secondary"
@@ -797,7 +801,7 @@ function App() {
                     onClick={handleUpdateTemplate}
                     disabled={!selectedTemplateId || isSavingTemplate}
                   >
-                    Mettre a jour le template selectionne
+                    Update selected template
                   </button>
                 </div>
 
@@ -813,7 +817,7 @@ function App() {
                         <div className="template-card-head">
                           <div>
                             <strong>{template.name}</strong>
-                            <p>{template.description || "Sans description"}</p>
+                            <p>{template.description || "No description"}</p>
                           </div>
                           <span>{new Date(template.updatedAt).toLocaleDateString()}</span>
                         </div>
@@ -828,7 +832,7 @@ function App() {
                             type="button"
                             onClick={() => applyTemplate(template)}
                           >
-                            Appliquer
+                            Apply
                           </button>
                           <button
                             className="ghost"
@@ -836,22 +840,20 @@ function App() {
                             onClick={() => handleDeleteTemplate(template.id)}
                             disabled={isDeletingTemplate}
                           >
-                            Supprimer
+                            Delete
                           </button>
                         </div>
                       </article>
                     ))}
                   </div>
                 ) : (
-                  <div className="empty-state">
-                    Aucun template enregistre pour le moment.
-                  </div>
+                  <div className="empty-state">No templates saved yet.</div>
                 )}
               </div>
 
               <div className="grid two">
                 <label>
-                  <span>Nom du MCP</span>
+                  <span>MCP name</span>
                   <input
                     value={spec.name}
                     onChange={(event) =>
@@ -861,17 +863,17 @@ function App() {
                   />
                 </label>
                 <label>
-                  <span>Audience cible</span>
+                  <span>Target audience</span>
                   <input
                     value={spec.audience}
                     onChange={(event) =>
                       setSpec((current) => ({ ...current, audience: event.target.value }))
                     }
-                    placeholder="Equipe operations, analysts, support"
+                    placeholder="Operations, analysts, support"
                   />
                 </label>
                 <label>
-                  <span>Transport cible</span>
+                  <span>Target transport</span>
                   <select
                     value={spec.transport}
                     onChange={(event) =>
@@ -883,78 +885,78 @@ function App() {
                   </select>
                 </label>
                 <label>
-                  <span>Objectif principal</span>
+                  <span>Primary goal</span>
                   <input
                     value={spec.primaryGoal}
                     onChange={(event) =>
                       setSpec((current) => ({ ...current, primaryGoal: event.target.value }))
                     }
-                    placeholder="Acceder a la data CRM et guider les diagnostics commerciaux"
+                    placeholder="Access CRM data and guide commercial diagnostics"
                   />
                 </label>
               </div>
 
               <label>
-                <span>Description du projet</span>
+                <span>Project description</span>
                 <textarea
                   value={spec.description}
                   onChange={(event) =>
                     setSpec((current) => ({ ...current, description: event.target.value }))
                   }
                   rows={5}
-                  placeholder="Explique clairement le role du MCP, les systemes qu'il doit couvrir et la valeur attendue."
+                  placeholder="Explain the MCP role clearly, the systems it should cover, and the expected value."
                 />
               </label>
 
               <label>
-                <span>Contexte metier / domaine</span>
+                <span>Business / domain context</span>
                 <textarea
                   value={spec.domainContext}
                   onChange={(event) =>
                     setSpec((current) => ({ ...current, domainContext: event.target.value }))
                   }
                   rows={5}
-                  placeholder="Rappelle les entites, contraintes, nomenclatures et particularites du domaine."
+                  placeholder="Summarize the entities, constraints, naming rules, and domain specifics."
                 />
               </label>
 
               <label>
-                <span>Role attendu pour le LLM dans les prompts</span>
+                <span>Expected LLM role in prompts</span>
                 <textarea
                   value={spec.llmRole}
                   onChange={(event) =>
                     setSpec((current) => ({ ...current, llmRole: event.target.value }))
                   }
                   rows={4}
-                  placeholder="Ex: agir comme un copilote d'analyse fiable, prudent, oriente actions et transparent sur ses limites."
+                  placeholder="Example: act like a reliable analytical copilot, cautious, action-oriented, and transparent about uncertainty."
                 />
               </label>
 
               <div className="stack">
                 <div className="subcard-head">
-                  <h3>Integrations base de donnees</h3>
+                  <h3>Database integrations</h3>
                   <div className="actions">
                     <button
                       className="secondary"
                       type="button"
                       onClick={() => addDatabaseIntegration("clickhouse")}
                     >
-                      Ajouter ClickHouse
+                      Add ClickHouse
                     </button>
                     <button
                       className="secondary"
                       type="button"
                       onClick={() => addDatabaseIntegration("oracle")}
                     >
-                      Ajouter Oracle
+                      Add Oracle
                     </button>
                   </div>
                 </div>
 
                 {spec.databaseIntegrations.length === 0 && (
                   <div className="empty-state">
-                    Ajoute ClickHouse et/ou Oracle si les MCPs generes doivent embarquer des
-                    helpers de connexion, des tools de ping, de schema ou de requetes.
+                    Add ClickHouse and/or Oracle when generated MCPs should include connection
+                    helpers, ping tools, schema tools, or query tools.
                   </div>
                 )}
 
@@ -974,13 +976,13 @@ function App() {
                           }))
                         }
                       >
-                        Supprimer
+                        Delete
                       </button>
                     </div>
 
                     <div className="grid two">
                       <label>
-                        <span>Nom affiche</span>
+                        <span>Display name</span>
                         <input
                           value={integration.name}
                           onChange={(event) =>
@@ -989,7 +991,7 @@ function App() {
                         />
                       </label>
                       <label>
-                        <span>Usage attendu</span>
+                        <span>Intended usage</span>
                         <input
                           value={integration.purpose}
                           onChange={(event) =>
@@ -1000,20 +1002,20 @@ function App() {
                     </div>
 
                     <label>
-                      <span>Notes de generation</span>
+                      <span>Generation notes</span>
                       <textarea
                         value={integration.notes}
                         onChange={(event) =>
                           updateDatabaseIntegration(integration.id, { notes: event.target.value })
                         }
                         rows={3}
-                        placeholder="Schemas a cibler, restrictions de lecture, tables critiques, conventions SQL..."
+                        placeholder="Target schemas, read restrictions, critical tables, SQL conventions..."
                       />
                     </label>
 
                     <div className="grid three compact">
                       <label className="checkbox-field">
-                        <span>Lecture seule</span>
+                        <span>Read only</span>
                         <input
                           type="checkbox"
                           checked={integration.readOnly}
@@ -1025,7 +1027,7 @@ function App() {
                         />
                       </label>
                       <label className="checkbox-field">
-                        <span>Tool schema</span>
+                        <span>Schema tool</span>
                         <input
                           type="checkbox"
                           checked={integration.includeSchemaTool}
@@ -1037,7 +1039,7 @@ function App() {
                         />
                       </label>
                       <label className="checkbox-field">
-                        <span>Tool query</span>
+                        <span>Query tool</span>
                         <input
                           type="checkbox"
                           checked={integration.includeQueryTool}
@@ -1054,7 +1056,7 @@ function App() {
               </div>
 
               <label>
-                <span>Garde-fous et contraintes</span>
+                <span>Guardrails and constraints</span>
                 <textarea
                   value={joinLines(spec.safetyGuardrails)}
                   onChange={(event) =>
@@ -1068,7 +1070,7 @@ function App() {
               </label>
 
               <label>
-                <span>Dependances externes a prevoir</span>
+                <span>External dependencies to include</span>
                 <textarea
                   value={joinLines(spec.externalDependencies)}
                   onChange={(event) =>
@@ -1078,12 +1080,12 @@ function App() {
                     }))
                   }
                   rows={4}
-                  placeholder="Une dependance par ligne, ex: requests, pandas, psycopg"
+                  placeholder="One dependency per line, for example requests, pandas, psycopg"
                 />
               </label>
 
               <label>
-                <span>Scenarios de test importants</span>
+                <span>Important test scenarios</span>
                 <textarea
                   value={joinLines(spec.testScenarios)}
                   onChange={(event) =>
@@ -1098,10 +1100,10 @@ function App() {
 
               <div className="actions">
                 <button className="secondary" type="button" onClick={() => setCurrentStep(0)}>
-                  Retour
+                  Back
                 </button>
                 <button className="primary" type="button" onClick={() => setCurrentStep(2)}>
-                  Continuer vers les tools
+                  Continue to tools
                 </button>
               </div>
             </section>
@@ -1111,11 +1113,12 @@ function App() {
             <section className="card stack">
               <div className="section-head">
                 <div>
-                  <p className="panel-label">Etape 3</p>
-                  <h2>Definition des tools</h2>
+                  <p className="panel-label">Step 3</p>
+                  <h2>Tool definition</h2>
                 </div>
                 <p className="muted">
-                  Plus tes tools sont precis, plus le blueprint `FastMCP` sera utile et actionnable.
+                  The more precise your tools are, the more useful and actionable the `FastMCP`
+                  blueprint becomes.
                 </p>
               </div>
 
@@ -1134,14 +1137,14 @@ function App() {
                           }))
                         }
                       >
-                        Supprimer
+                        Delete
                       </button>
                     )}
                   </div>
 
                   <div className="grid two">
                     <label>
-                      <span>Nom du tool</span>
+                      <span>Tool name</span>
                       <input
                         value={tool.name}
                         onChange={(event) => updateTool(tool.id, { name: event.target.value })}
@@ -1149,19 +1152,19 @@ function App() {
                       />
                     </label>
                     <label>
-                      <span>Sortie attendue</span>
+                      <span>Expected output</span>
                       <input
                         value={tool.outputDescription}
                         onChange={(event) =>
                           updateTool(tool.id, { outputDescription: event.target.value })
                         }
-                        placeholder="Resume structure, score, recommandations"
+                        placeholder="Structured summary, score, recommendations"
                       />
                     </label>
                   </div>
 
                   <label>
-                    <span>But du tool</span>
+                    <span>Tool purpose</span>
                     <textarea
                       value={tool.purpose}
                       onChange={(event) => updateTool(tool.id, { purpose: event.target.value })}
@@ -1170,20 +1173,20 @@ function App() {
                   </label>
 
                   <label>
-                    <span>Logique d'implementation attendue</span>
+                    <span>Expected implementation logic</span>
                     <textarea
                       value={tool.implementationNotes}
                       onChange={(event) =>
                         updateTool(tool.id, { implementationNotes: event.target.value })
                       }
                       rows={4}
-                      placeholder="Detaille les etapes, appels externes, validations et cas limites."
+                      placeholder="Detail the steps, external calls, validations, and edge cases."
                     />
                   </label>
 
                   <div className="grid two">
                     <label>
-                      <span>Securite / garde-fous</span>
+                      <span>Safety / guardrails</span>
                       <textarea
                         value={tool.safetyNotes}
                         onChange={(event) =>
@@ -1193,7 +1196,7 @@ function App() {
                       />
                     </label>
                     <label>
-                      <span>Exemple d'usage</span>
+                      <span>Example usage</span>
                       <textarea
                         value={tool.exampleUse}
                         onChange={(event) =>
@@ -1206,7 +1209,7 @@ function App() {
 
                   <div className="stack">
                     <div className="subcard-head">
-                      <h4>Entrees du tool</h4>
+                      <h4>Tool inputs</h4>
                       <button
                         className="ghost"
                         type="button"
@@ -1214,7 +1217,7 @@ function App() {
                           updateTool(tool.id, { inputs: [...tool.inputs, createToolInput()] })
                         }
                       >
-                        Ajouter une entree
+                        Add input
                       </button>
                     </div>
 
@@ -1253,11 +1256,11 @@ function App() {
                             onChange={(event) =>
                               updateToolInput(tool.id, input.id, { description: event.target.value })
                             }
-                            placeholder="Identifiant CRM interne"
+                            placeholder="Internal CRM identifier"
                           />
                         </label>
                         <label className="checkbox-field">
-                          <span>Obligatoire</span>
+                          <span>Required</span>
                           <input
                             checked={input.required}
                             onChange={(event) =>
@@ -1280,14 +1283,14 @@ function App() {
                     setSpec((current) => ({ ...current, tools: [...current.tools, createTool()] }))
                   }
                 >
-                  Ajouter un tool
+                  Add tool
                 </button>
                 <div className="actions">
                   <button className="secondary" type="button" onClick={() => setCurrentStep(1)}>
-                    Retour
+                    Back
                   </button>
                   <button className="primary" type="button" onClick={() => setCurrentStep(3)}>
-                    Continuer
+                    Continue
                   </button>
                 </div>
               </div>
@@ -1298,18 +1301,18 @@ function App() {
             <section className="card stack">
               <div className="section-head">
                 <div>
-                  <p className="panel-label">Etape 4</p>
-                  <h2>Ressources et prompts</h2>
+                  <p className="panel-label">Step 4</p>
+                  <h2>Resources and prompts</h2>
                 </div>
                 <p className="muted">
-                  Les ressources donnent du contexte lisible. Les prompts encadrent l'usage cote client.
+                  Resources provide readable context. Prompts help frame common client-side usage.
                 </p>
               </div>
 
               <div className="split-grid">
                 <div className="stack">
                   <div className="subcard-head">
-                    <h3>Ressources</h3>
+                    <h3>Resources</h3>
                     <button
                       className="ghost"
                       type="button"
@@ -1320,18 +1323,16 @@ function App() {
                         }))
                       }
                     >
-                      Ajouter
+                      Add
                     </button>
                   </div>
                   {spec.resources.length === 0 && (
-                    <div className="empty-state">
-                      Ajoute une ressource si ton MCP doit exposer des donnees lisibles.
-                    </div>
+                    <div className="empty-state">Add a resource if your MCP should expose readable data.</div>
                   )}
                   {spec.resources.map((resource) => (
                     <article className="subcard stack" key={resource.id}>
                       <div className="subcard-head">
-                        <h4>{resource.name || "Nouvelle ressource"}</h4>
+                        <h4>{resource.name || "New resource"}</h4>
                         <button
                           className="ghost"
                           type="button"
@@ -1342,11 +1343,11 @@ function App() {
                             }))
                           }
                         >
-                          Supprimer
+                          Delete
                         </button>
                       </div>
                       <label>
-                        <span>Nom</span>
+                        <span>Name</span>
                         <input
                           value={resource.name}
                           onChange={(event) =>
@@ -1375,7 +1376,7 @@ function App() {
                         />
                       </label>
                       <label>
-                        <span>Contenu attendu</span>
+                        <span>Expected content</span>
                         <textarea
                           value={resource.contentOutline}
                           onChange={(event) =>
@@ -1401,18 +1402,18 @@ function App() {
                         }))
                       }
                     >
-                      Ajouter
+                      Add
                     </button>
                   </div>
                   {spec.prompts.length === 0 && (
                     <div className="empty-state">
-                      Ajoute un prompt si tu veux cadrer des usages frequents cote client.
+                      Add a prompt if you want to guide common client-side workflows.
                     </div>
                   )}
                   {spec.prompts.map((prompt) => (
                     <article className="subcard stack" key={prompt.id}>
                       <div className="subcard-head">
-                        <h4>{prompt.name || "Nouveau prompt"}</h4>
+                        <h4>{prompt.name || "New prompt"}</h4>
                         <button
                           className="ghost"
                           type="button"
@@ -1423,11 +1424,11 @@ function App() {
                             }))
                           }
                         >
-                          Supprimer
+                          Delete
                         </button>
                       </div>
                       <label>
-                        <span>Nom</span>
+                        <span>Name</span>
                         <input
                           value={prompt.name}
                           onChange={(event) => updatePrompt(prompt.id, { name: event.target.value })}
@@ -1464,14 +1465,14 @@ function App() {
                               })
                             }
                           >
-                            Ajouter
+                            Add
                           </button>
                         </div>
 
                         {prompt.arguments.map((argument) => (
                           <div className="grid three compact" key={argument.id}>
                             <label>
-                              <span>Nom</span>
+                              <span>Name</span>
                               <input
                                 value={argument.name}
                                 onChange={(event) =>
@@ -1493,7 +1494,7 @@ function App() {
                               />
                             </label>
                             <label className="checkbox-field">
-                              <span>Obligatoire</span>
+                              <span>Required</span>
                               <input
                                 checked={argument.required}
                                 onChange={(event) =>
@@ -1514,10 +1515,10 @@ function App() {
 
               <div className="actions">
                 <button className="secondary" type="button" onClick={() => setCurrentStep(2)}>
-                  Retour
+                  Back
                 </button>
                 <button className="primary" type="button" onClick={() => setCurrentStep(4)}>
-                  Aller au preview
+                  Go to preview
                 </button>
               </div>
             </section>
@@ -1527,39 +1528,39 @@ function App() {
             <section className="card stack">
               <div className="section-head">
                 <div>
-                  <p className="panel-label">Etape 5</p>
-                  <h2>Preview et generation</h2>
+                  <p className="panel-label">Step 5</p>
+                  <h2>Preview and generation</h2>
                 </div>
                 <p className="muted">
-                  Relis le cadrage, genere un blueprint, puis cree le projet `FastMCP`.
+                  Review the setup, generate a blueprint, then create the `FastMCP` project.
                 </p>
               </div>
 
               <div className="summary-grid">
                 <div className="summary-card">
-                  <p className="panel-label">Resume</p>
-                  <h3>{spec.name || "Nom du projet a definir"}</h3>
-                  <p>{spec.description || "Ajoute une description pour guider la generation."}</p>
+                  <p className="panel-label">Summary</p>
+                  <h3>{spec.name || "Project name is still missing"}</h3>
+                  <p>{spec.description || "Add a description to guide the generation."}</p>
                   <ul>
-                    <li>{spec.tools.filter((tool) => tool.name.trim()).length} tools metier</li>
-                    <li>{spec.databaseIntegrations.length} integration(s) DB</li>
-                    <li>{spec.resources.length} ressources</li>
+                    <li>{spec.tools.filter((tool) => tool.name.trim()).length} business tools</li>
+                    <li>{spec.databaseIntegrations.length} DB integration(s)</li>
+                    <li>{spec.resources.length} resources</li>
                     <li>{spec.prompts.length} prompts</li>
                   </ul>
                 </div>
                 <div className="summary-card accent">
-                  <p className="panel-label">Mode de generation</p>
-                  <h3>{readiness.hasSelectedModel ? "LLM local + fallback" : "Fallback uniquement"}</h3>
+                  <p className="panel-label">Generation mode</p>
+                  <h3>{readiness.hasSelectedModel ? "Local LLM + fallback" : "Fallback only"}</h3>
                   <p>
-                    Si le LLM est configure, l&apos;app lui demande une structure JSON stricte puis
-                    securise le resultat avant d&apos;ecrire les fichiers.
+                    When the LLM is configured, the app requests a strict JSON structure and then
+                    hardens the result before writing files.
                   </p>
                 </div>
               </div>
 
               {spec.databaseIntegrations.length > 0 && (
                 <div className="subcard stack">
-                  <h4>Integrations preparees</h4>
+                  <h4>Prepared integrations</h4>
                   {spec.databaseIntegrations.map((integration) => (
                     <div key={integration.id} className="integration-row">
                       <strong>{integration.name}</strong>
@@ -1572,7 +1573,7 @@ function App() {
 
               <div className="actions">
                 <button className="secondary" type="button" onClick={() => setCurrentStep(3)}>
-                  Retour
+                  Back
                 </button>
                 <button
                   className="secondary"
@@ -1580,7 +1581,7 @@ function App() {
                   onClick={handlePreview}
                   disabled={!readiness.hasProjectCore || !readiness.hasTooling || isPreviewing}
                 >
-                  {isPreviewing ? "Generation du blueprint..." : "Generer le blueprint"}
+                  {isPreviewing ? "Generating blueprint..." : "Generate blueprint"}
                 </button>
                 <button
                   className="primary"
@@ -1588,7 +1589,7 @@ function App() {
                   onClick={handleGenerate}
                   disabled={!readiness.hasProjectCore || !readiness.hasTooling || isGenerating}
                 >
-                  {isGenerating ? "Generation du projet..." : "Generer le MCP"}
+                  {isGenerating ? "Generating project..." : "Generate MCP"}
                 </button>
               </div>
 
@@ -1633,7 +1634,7 @@ function App() {
 
                   {preview?.blueprint.database_integrations.length ? (
                     <div className="subcard stack">
-                      <h4>Integrations DB generees</h4>
+                      <h4>Generated DB integrations</h4>
                       {preview.blueprint.database_integrations.map((integration) => (
                         <div key={integration.python_name} className="tool-preview">
                           <strong>{integration.name}</strong>
@@ -1649,7 +1650,7 @@ function App() {
                   ) : null}
 
                   <div className="subcard stack">
-                    <h4>Tools generes</h4>
+                    <h4>Generated tools</h4>
                     {preview?.blueprint.tools.length ? (
                       preview.blueprint.tools.map((tool) => (
                         <div key={tool.python_name} className="tool-preview">
@@ -1664,15 +1665,15 @@ function App() {
                       ))
                     ) : (
                       <p className="muted">
-                        Aucun tool metier explicite. Les integrations DB selectionnees pourront
-                        tout de meme generer des helpers et tools de base.
+                        No explicit business tools were provided. The selected DB integrations can
+                        still generate helpers and baseline tools.
                       </p>
                     )}
                   </div>
 
                   {generation && (
                     <div className="subcard stack success-box">
-                      <h4>Projet genere</h4>
+                      <h4>Generated project</h4>
                       <p>{generation.output_path}</p>
                       <ul>
                         {generation.files.map((file) => (

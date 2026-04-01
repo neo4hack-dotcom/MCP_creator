@@ -8,6 +8,7 @@ L'objectif est simple: partir d'un besoin metier, guider la conception du MCP da
 
 - interface React + TypeScript guidee
 - backend FastAPI pour la logique de generation
+- point d'entree backend standard via `server.py`
 - connexion a un LLM local compatible OpenAI
 - test de connexion LLM et recuperation de la liste des modeles
 - sauvegarde de templates reutilisables de MCP
@@ -110,6 +111,18 @@ Backend disponible sur `http://127.0.0.1:8000`
 npm run start:api
 ```
 
+### Lancement Python direct
+
+```bash
+python server.py
+```
+
+ou avec uvicorn:
+
+```bash
+python -m uvicorn server:app --host 127.0.0.1 --port 8000 --reload
+```
+
 ## Scripts disponibles
 
 - `npm run setup`
@@ -121,7 +134,7 @@ npm run start:api
 - `npm run dev:web`
   - lance Vite
 - `npm run dev:api`
-  - lance FastAPI via un script Node multiplateforme
+  - lance FastAPI via un script Node multiplateforme pointe sur `server:app`
 - `npm run start:api`
   - lance l'API sans reload
 - `npm run lint`
@@ -271,6 +284,7 @@ MCP_creator/
 │   ├── python-runtime.mjs
 │   ├── run-api.mjs
 │   └── setup-python.mjs
+├── server.py
 ├── src/
 │   ├── App.tsx
 │   ├── api.ts
@@ -312,6 +326,7 @@ Le backend:
 - interroge le LLM local
 - construit et normalise le blueprint
 - genere les projets Python
+- expose un point d'entree standard `server.py` pour le lancement local ou via uvicorn
 
 Fichiers principaux:
 
